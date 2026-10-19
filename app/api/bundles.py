@@ -1,0 +1,1 @@
+"""Diagnostic bundle route definitions."""

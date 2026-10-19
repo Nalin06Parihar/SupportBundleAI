@@ -1,0 +1,1 @@
+"""Diagnostic workflow route definitions."""

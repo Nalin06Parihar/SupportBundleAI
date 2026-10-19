@@ -1,0 +1,35 @@
+[project]
+name = "mini-project"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "Nalin06Parihar", email = "nparihar@opentext.com" }
+]
+requires-python = ">=3.13"
+dependencies = [
+    "alembic>=1.20.0",
+    "fastapi>=0.146.0",
+    "httpx>=0.28.1",
+    "jinja2>=3.1.6",
+    "langchain-core>=1.6.12",
+    "langchain-groq>=1.1.3",
+    "langgraph>=1.2.16",
+    "psutil>=7.2.2",
+    "pydantic>=2.14.1",
+    "pydantic-settings>=2.16.0",
+    "pytest>=9.1.1",
+    "pytest-mock>=3.17.0",
+    "python-dotenv>=1.2.4",
+    "python-multipart>=0.0.32",
+    "pyyaml>=6.0.3",
+    "sqlalchemy>=2.1.5",
+    "uvicorn[standard]>=0.54.0",
+]
+
+[project.scripts]
+mini-project = "mini_project:main"
+
+[build-system]
+requires = ["uv_build>=0.12.23,<0.13.0"]
+build-backend = "uv_build"
