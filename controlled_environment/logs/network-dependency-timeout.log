@@ -1,0 +1,5 @@
+2026-04-14T11:40:00.010Z INFO  app=MapleDesk host=demo-host-03 event=dependency_check target=inventory-api.demo.test
+2026-04-14T11:40:00.014Z INFO  app=MapleDesk host=demo-host-03 event=dns_resolved target=inventory-api.demo.test address=203.0.113.19
+2026-04-14T11:40:05.021Z WARN  app=MapleDesk host=demo-host-03 event=request_timeout target=inventory-api.demo.test timeout_ms=5000 attempt=1
+2026-04-14T11:40:10.038Z WARN  app=MapleDesk host=demo-host-03 event=request_timeout target=inventory-api.demo.test timeout_ms=5000 attempt=2
+2026-04-14T11:40:10.045Z WARN  app=MapleDesk host=demo-host-03 event=dependency_health status=degraded consecutive_failures=2

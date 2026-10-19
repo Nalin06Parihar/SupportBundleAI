@@ -1,0 +1,44 @@
+{
+  "scenario_state": {
+    "service_name": "MapleDesk-indexer",
+    "service_state": "running",
+    "process_id": 5251,
+    "synthetic_workload": "large_test_catalog_reindex"
+  },
+  "resource_snapshot": {
+    "cpu_percent": 93.7,
+    "cpu_alert_threshold_percent": 85,
+    "memory_percent": 62.2,
+    "memory_alert_threshold_percent": 90,
+    "top_processes": [
+      {
+        "name": "MapleDesk-indexer",
+        "cpu_percent": 82.4,
+        "memory_mb": 384
+      },
+      {
+        "name": "MapleDesk-api",
+        "cpu_percent": 8.1,
+        "memory_mb": 246
+      }
+    ]
+  },
+  "synthetic_host": {
+    "hostname": "demo-host-02",
+    "address": "198.51.100.27"
+  },
+  "synthetic_system": {
+    "os_name": "DemoOS",
+    "os_version": "12.4-synthetic",
+    "architecture": "x86_64",
+    "boot_time": "2026-04-14T05:00:00Z",
+    "uptime_seconds": 19500
+  },
+  "disk_snapshot": {
+    "volume": "SYNTH-DATA",
+    "total_bytes": 214748364800,
+    "used_bytes": 150323855360,
+    "free_bytes": 64424509440,
+    "used_percent": 70.0
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "scenario_state": {
+    "service_name": "MapleDesk-API",
+    "service_state": "failed",
+    "exit_code": 78,
+    "restart_count": 2
+  },
+  "application_config": {
+    "application_name": "MapleDesk",
+    "environment": "synthetic",
+    "listen_port": 70000,
+    "required_settings_present": false,
+    "missing_setting_name": "MAPLEDESK_REGION"
+  },
+  "synthetic_host": {
+    "hostname": "demo-host-01",
+    "address": "192.0.2.41"
+  },
+  "synthetic_system": {
+    "os_name": "DemoOS",
+    "os_version": "12.4-synthetic",
+    "architecture": "x86_64",
+    "boot_time": "2026-04-14T06:00:00Z",
+    "uptime_seconds": 11521
+  },
+  "disk_snapshot": {
+    "volume": "SYNTH-DATA",
+    "total_bytes": 107374182400,
+    "used_bytes": 48318382080,
+    "free_bytes": 59055800320,
+    "used_percent": 45.0
+  }
+}

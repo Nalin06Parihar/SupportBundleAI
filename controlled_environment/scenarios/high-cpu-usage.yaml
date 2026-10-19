@@ -1,0 +1,17 @@
+scenario_id: high-cpu-usage
+title: High CPU usage
+description: A synthetic background indexing task drives sustained CPU utilization in a test service.
+issue_category: resource_usage
+available_collectors:
+  - system_info
+  - disk_usage
+  - resource_usage
+  - process_list
+  - service_status
+evidence_files:
+  - logs/high-cpu-usage.log
+  - configs/high-cpu-usage.json
+expected_signals:
+  - CPU utilization remains above the synthetic alert threshold.
+  - The MapleDesk-indexer process is the primary CPU consumer.
+  - Memory pressure remains below its configured threshold.

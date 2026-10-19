@@ -1,0 +1,47 @@
+{
+  "scenario_state": {
+    "application_service": "MapleDesk-api",
+    "service_state": "running",
+    "dependency_state": "timeout",
+    "consecutive_failures": 2
+  },
+  "dependency_config": {
+    "name": "inventory-api",
+    "url": "https://inventory-api.demo.test/v1/status",
+    "connect_timeout_ms": 1500,
+    "request_timeout_ms": 5000,
+    "retry_limit": 2,
+    "dns_resolution": "success",
+    "synthetic_address": "203.0.113.19"
+  },
+  "synthetic_host": {
+    "hostname": "demo-host-03",
+    "address": "192.0.2.89"
+  },
+  "synthetic_system": {
+    "os_name": "DemoOS",
+    "os_version": "12.4-synthetic",
+    "architecture": "arm64",
+    "boot_time": "2026-04-14T07:30:00Z",
+    "uptime_seconds": 15000
+  },
+  "disk_snapshot": {
+    "volume": "SYNTH-DATA",
+    "total_bytes": 107374182400,
+    "used_bytes": 69793218560,
+    "free_bytes": 37580963840,
+    "used_percent": 65.0
+  },
+  "network_snapshot": {
+    "interfaces": [
+      {
+        "name": "demo-ethernet",
+        "state": "up",
+        "address": "192.0.2.89"
+      }
+    ],
+    "dependency_state": "timeout",
+    "dependency_name": "inventory-api",
+    "resolved_address": "203.0.113.19"
+  }
+}

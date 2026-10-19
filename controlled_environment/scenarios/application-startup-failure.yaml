@@ -1,0 +1,17 @@
+scenario_id: application-startup-failure
+title: Application startup failure
+description: A synthetic service instance exits during startup after rejecting its configuration.
+issue_category: application_startup
+available_collectors:
+  - system_info
+  - disk_usage
+  - service_status
+  - application_logs
+  - application_config
+evidence_files:
+  - logs/application-startup-failure.log
+  - configs/application-startup-failure.json
+expected_signals:
+  - Service state is failed with a non-zero exit code.
+  - The application reports a missing required setting by name only.
+  - The configured listener port is outside the permitted range.

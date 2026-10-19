@@ -1,0 +1,5 @@
+2026-04-14T09:12:01.108Z INFO  app=MapleDesk host=demo-host-01 event=process_start pid=4120
+2026-04-14T09:12:01.142Z INFO  app=MapleDesk event=config_load source=controlled-config.json
+2026-04-14T09:12:01.151Z ERROR app=MapleDesk event=config_validate key=LISTEN_PORT reason=value_out_of_range
+2026-04-14T09:12:01.152Z ERROR app=MapleDesk event=startup_abort reason=configuration_validation_failed
+2026-04-14T09:12:01.159Z INFO  app=MapleDesk event=process_exit exit_code=78

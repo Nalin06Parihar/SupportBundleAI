@@ -1,0 +1,5 @@
+2026-04-14T10:25:00.000Z INFO  app=MapleDesk host=demo-host-02 event=metrics cpu_percent=94.2 memory_percent=61.0
+2026-04-14T10:25:10.000Z WARN  app=MapleDesk host=demo-host-02 event=cpu_threshold_exceeded threshold_percent=85 duration_seconds=30
+2026-04-14T10:25:20.000Z INFO  app=MapleDesk host=demo-host-02 event=process_sample name=MapleDesk-indexer pid=5251 cpu_percent=82.4
+2026-04-14T10:25:30.000Z INFO  app=MapleDesk host=demo-host-02 event=process_sample name=MapleDesk-api pid=5288 cpu_percent=8.1
+2026-04-14T10:25:40.000Z WARN  app=MapleDesk host=demo-host-02 event=metrics cpu_percent=93.7 memory_percent=62.2

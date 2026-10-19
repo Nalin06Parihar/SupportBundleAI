@@ -1,0 +1,18 @@
+scenario_id: network-dependency-timeout
+title: Network dependency timeout
+description: A synthetic application cannot complete requests to its configured test dependency within the expected timeout.
+issue_category: network_dependency
+available_collectors:
+  - system_info
+  - disk_usage
+  - network_info
+  - service_status
+  - application_logs
+  - application_config
+evidence_files:
+  - logs/network-dependency-timeout.log
+  - configs/network-dependency-timeout.json
+expected_signals:
+  - Dependency requests exceed the configured timeout.
+  - Synthetic DNS resolution succeeds, but the service endpoint does not respond.
+  - The application service remains running while dependency checks are degraded.

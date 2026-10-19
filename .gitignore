@@ -9,6 +9,7 @@ output/*
 !output/.gitkeep
 *.zip
 *.log
+!controlled_environment/logs/*.log
 .vscode/
 .idea/
 .DS_Store
