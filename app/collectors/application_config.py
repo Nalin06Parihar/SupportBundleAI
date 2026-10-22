@@ -14,6 +14,7 @@ class ApplicationConfigCollector(BaseCollector):
 
     collector_name = CollectorName.APPLICATION_CONFIG
     description = "Read the scenario's approved synthetic JSON configuration."
+    scenario_evidence_extensions = (".json",)
 
     def _collect_synthetic(
         self,

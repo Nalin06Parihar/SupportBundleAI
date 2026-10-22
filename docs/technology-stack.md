@@ -16,6 +16,10 @@
 - **pytest**: API and unit test runner.
 - **HTTPX**: test client transport used by FastAPI `TestClient`.
 - **Python standard-library logging**: console application logging without a third-party logging service.
+- **langchain-core**: model and message abstractions for structured evidence planning.
+- **langchain-groq**: the current `ChatGroq` model adapter; its compatible Groq SDK dependency is managed by the integration.
+- **langgraph**: internal workflow state transitions and human plan-approval interrupt.
+- **langgraph-checkpoint-sqlite**: official durable SQLite checkpointer (`AsyncSqliteSaver`) for resumable graph state, separate from application business records.
 - **`pathlib`**: portable filesystem path handling.
 - **`hashlib`**: planned SHA-256 manifest generation.
 - **`zipfile`**: planned local diagnostic archive creation and verification.
@@ -23,17 +27,12 @@
 
 ## Planned
 
-The AI framework and provider stack selected for the planned workflow:
-
-- **langgraph**: stateful workflow orchestration.
-- **langchain-core**: model and message abstractions for the provider adapter.
-- **langchain-groq**: ChatGroq adapter for the selected external model provider.
-- **Groq Python SDK (`groq`)**: provider SDK used by the planned ChatGroq integration; not called in the current implementation.
+The remaining AI workflow stack:
 
 - **Streamlit dashboard**: future user interface that will communicate with FastAPI.
-- **Regex-based sanitization**: planned initial approach for removing sensitive values from evidence.
+- **Regex-based sanitization**: implemented deterministic local redaction for text/log and JSON artifacts, followed by local verification and residual-risk classification.
 - **Optional Presidio integration**: possible future enhancement for identifying sensitive information.
 
-LangGraph will handle state, branching, interruption, resumption, approval points, and supplemental collection loops. Pydantic validates graph state and node inputs and outputs. `langchain-groq` provides the ChatGroq adapter. Local Python code controls all collection, sanitization, policy enforcement, file access, hashing, and packaging. LangGraph checkpointing is not implemented yet.
+The Phase 8 planner uses `ChatGroq.with_structured_output()` with function calling and the existing `EvidencePlan` Pydantic contract. It produces proposals only: the local policy validator remains authoritative, and the planning service does not execute collectors or send raw evidence. Phase 9/10 use LangGraph for workflow state transitions, the human plan-approval interrupt, local sanitization, residual-risk classification, and the evidence-review interrupt. The workflow UUID is the checkpoint `thread_id`; the official SQLite checkpointer is separate from repository-backed business persistence. The workflow allows one plan-revision cycle and pauses for evidence review after collection and sanitization. Local Python code continues to control collection, sanitization, policy enforcement, file access, hashing, and packaging.
 
-Do not use `pydantic-ai`; do not add the full `langchain` package unless a concrete future requirement needs it. LangGraph, LangChain Core, and ChatGroq integrations are not implemented yet.
+Do not use `pydantic-ai`; do not add the full `langchain` package unless a concrete future requirement needs it. LangChain Core, ChatGroq planning, and LangGraph checkpointed workflow orchestration are implemented.

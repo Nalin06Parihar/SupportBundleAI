@@ -32,7 +32,7 @@ These boundaries are mandatory for future implementation:
 28. Approval comments must not bypass policy controls.
 29. Evidence-release approval and bundle-release approval are separate decisions.
 30. SQLite stores workflow, approval, audit, artifact, collector-run, and bundle metadata only.
-31. Diagnostic file contents and ZIP binaries remain outside SQLite in controlled filesystem directories.
+31. Diagnostic file contents, sanitized copies, and ZIP binaries remain outside SQLite in controlled filesystem directories.
 32. Persisted artifact and bundle paths are relative; absolute paths are rejected.
 33. Schema creation and upgrades are Alembic-controlled; application startup must not create tables.
 
@@ -40,8 +40,8 @@ These boundaries are mandatory for future implementation:
 
 Groq is an external service. Any future data sent to it crosses the local-machine trust boundary and must be limited to approved, sanitized information. The provider must not receive secrets, raw evidence, local paths, or execution authority. Local policy and Python code remain authoritative over what may be collected and transmitted.
 
-The current application does not make Groq requests or collect real-machine evidence. Implemented collectors read deterministic synthetic evidence only from files declared by a validated controlled scenario. Their output has not yet been sanitized.
+The evidence planner may contact Groq only when a planning request is made; it receives no diagnostic evidence. Implemented collectors read deterministic synthetic evidence only from files declared by a validated controlled scenario. Collected structured outputs are kept out of graph checkpoints and SQLite, then staged locally as unsanitized artifacts for bounded local sanitization. Sanitization writes a separate sanitized copy, verifies it, and marks unsupported or unverifiable artifacts blocked. The workflow pauses for human evidence review; no evidence is sent for analysis in this phase.
 
 ## Human approval boundaries
 
-Plan approval is required before collection. A separate evidence-release decision is required before any sanitized excerpt is sent to the external provider, and final bundle release requires its own approval. Approval can further restrict what is shared, but it cannot override local hard security blocks for recognized secrets. Approval comments are review context only, not policy overrides.
+Plan approval is required before collection. After collection, sanitization and residual-risk review occur locally and a separate evidence-review request is persisted before the workflow pauses. Evidence-release decision handling is not implemented yet; no sanitized excerpt is sent to the external provider in this phase. Final bundle release requires its own approval. Approval can further restrict what is shared, but it cannot override local hard security blocks for recognized secrets. Approval comments are review context only, not policy overrides.

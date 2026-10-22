@@ -15,6 +15,8 @@ class ApplicationLogCollector(BaseCollector):
     collector_name = CollectorName.APPLICATION_LOGS
     description = "Read a bounded number of lines from the scenario's approved log."
     supported_parameter_names = ("max_lines",)
+    parameter_limits = {"max_lines": (1, 100)}
+    scenario_evidence_extensions = (".log",)
 
     def _collect_synthetic(
         self,

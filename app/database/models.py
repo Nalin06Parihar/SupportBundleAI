@@ -31,6 +31,12 @@ class WorkflowRecord(Base):
     status: Mapped[str] = mapped_column(String(40), nullable=False, index=True)
     current_stage: Mapped[str] = mapped_column(String(100), nullable=False)
     warning_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    supplemental_cycle_count: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        default=0,
+        server_default="0",
+    )
     error_code: Mapped[str | None] = mapped_column(String(100))
     error_message: Mapped[str | None] = mapped_column(String(500))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
@@ -69,6 +75,28 @@ class WorkflowRecord(Base):
         cascade="all, delete-orphan",
         passive_deletes=True,
     )
+    analyses: Mapped[list["AnalysisRecord"]] = relationship(
+        back_populates="workflow",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
+
+
+class AnalysisRecord(Base):
+    __tablename__ = "analyses"
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    workflow_id: Mapped[str] = mapped_column(
+        ForeignKey("workflows.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    status: Mapped[str] = mapped_column(String(30), nullable=False)
+    result: Mapped[dict[str, Any] | None] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), nullable=False)
+    completed_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
+
+    workflow: Mapped[WorkflowRecord] = relationship(back_populates="analyses")
 
 
 class EvidenceStepRecord(Base):

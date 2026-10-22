@@ -15,6 +15,7 @@ class ServiceStatusCollector(BaseCollector):
 
     collector_name = CollectorName.SERVICE_STATUS
     description = "Read synthetic service state from the scenario."
+    scenario_evidence_extensions = (".json",)
 
     def _collect_synthetic(
         self,

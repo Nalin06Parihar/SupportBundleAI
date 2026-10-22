@@ -35,11 +35,11 @@ No raw evidence is sent to Groq automatically. The Phase 3 models define validat
 
 ## Current controlled-environment scope
 
-The project is intended to use synthetic scenarios, logs, and configurations in `controlled_environment/` during initial development. The current application validates that this directory exists at startup but does not read or collect its contents.
+The project uses synthetic scenarios, logs, and configurations in `controlled_environment/` during initial development. The internal workflow validates and reads only scenario-declared files through the controlled loader; collectors are deterministic and synthetic.
 
 ## Primary user flow
 
-The planned user flow is to describe a technical issue, review a controlled evidence plan, approve permitted collection, and download a sanitized escalation bundle. Issue submission, review, collection, and bundle delivery are not implemented.
+The implemented internal workflow accepts an issue, proposes and policy-validates an evidence plan, pauses for human plan approval, executes approved synthetic collectors, sanitizes and verifies their artifacts locally, classifies residual risk, and pauses for human evidence review. Public workflow APIs, evidence-release decision handling, external evidence analysis, and bundle delivery are not implemented.
 
 ## Non-goals
 
@@ -50,4 +50,4 @@ The planned user flow is to describe a technical issue, review a controlled evid
 
 ## Current limitations
 
-Phase 2 provides application metadata and a local health endpoint. Phase 3 adds domain, approval, API, and future workflow-state contracts. Groq is not contacted; collectors do not run; planning, sanitization, analysis, reporting, persistence, and bundling are not implemented.
+Phases 3-10 provide validated contracts, SQLite business metadata persistence, controlled scenarios, synthetic collectors, local policy validation, ChatGroq evidence planning, LangGraph plan approval and collection, and local sanitization with residual-risk review. Groq is used only for evidence-plan proposals when configured; diagnostic evidence is not sent to it. Public workflow routes, evidence-release decision handling, analysis, reporting, and bundling remain unimplemented.

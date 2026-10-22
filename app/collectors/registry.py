@@ -14,6 +14,7 @@ from app.collectors.process_info import ProcessListCollector
 from app.collectors.service_info import ServiceStatusCollector
 from app.collectors.system_info import ResourceUsageCollector, SystemInfoCollector
 from app.collectors.application_config import ApplicationConfigCollector
+from app.scenarios.loader import ScenarioLoader
 
 
 class CollectorRegistry:
@@ -74,6 +75,12 @@ class CollectorRegistry:
                 "name": collector.collector_name.value,
                 "description": collector.description,
                 "supported_parameters": list(collector.supported_parameter_names),
+                "required_parameters": list(collector.required_parameter_names),
+                "parameter_limits": dict(collector.parameter_limits),
+                "scenario_evidence_extensions": list(
+                    collector.scenario_evidence_extensions
+                ),
+                "requires_scenario_evidence": collector.requires_scenario_evidence,
             }
             for collector in sorted(
                 self._collectors.values(),
@@ -82,17 +89,19 @@ class CollectorRegistry:
         ]
 
 
-def create_default_registry() -> CollectorRegistry:
+def create_default_registry(
+    scenario_loader: ScenarioLoader | None = None,
+) -> CollectorRegistry:
     """Create the allow-list of deterministic synthetic Phase 6 collectors."""
     return CollectorRegistry(
         [
-            SystemInfoCollector(),
-            ResourceUsageCollector(),
-            DiskUsageCollector(),
-            ProcessListCollector(),
-            ServiceStatusCollector(),
-            ApplicationLogCollector(),
-            NetworkInfoCollector(),
-            ApplicationConfigCollector(),
+            SystemInfoCollector(scenario_loader),
+            ResourceUsageCollector(scenario_loader),
+            DiskUsageCollector(scenario_loader),
+            ProcessListCollector(scenario_loader),
+            ServiceStatusCollector(scenario_loader),
+            ApplicationLogCollector(scenario_loader),
+            NetworkInfoCollector(scenario_loader),
+            ApplicationConfigCollector(scenario_loader),
         ]
     )

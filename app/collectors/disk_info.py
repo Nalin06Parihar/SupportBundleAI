@@ -14,6 +14,7 @@ class DiskUsageCollector(BaseCollector):
 
     collector_name = CollectorName.DISK_USAGE
     description = "Read synthetic disk capacity and utilization from the scenario."
+    scenario_evidence_extensions = (".json",)
 
     def _collect_synthetic(
         self,

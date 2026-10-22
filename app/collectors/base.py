@@ -2,6 +2,7 @@
 
 from abc import ABC, abstractmethod
 from time import perf_counter
+from typing import ClassVar
 from uuid import UUID
 
 from app.core.exceptions import CollectorError, PolicyViolationError
@@ -26,6 +27,10 @@ class BaseCollector(ABC):
     collector_name: CollectorName
     description: str
     supported_parameter_names: tuple[str, ...] = ()
+    required_parameter_names: tuple[str, ...] = ()
+    parameter_limits: ClassVar[dict[str, tuple[int, int]]] = {}
+    scenario_evidence_extensions: tuple[str, ...] = ()
+    requires_scenario_evidence: bool = True
 
     def __init__(self, scenario_loader: ScenarioLoader | None = None) -> None:
         self._scenario_loader = scenario_loader or ScenarioLoader()

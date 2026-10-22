@@ -17,6 +17,9 @@ class ProcessListCollector(BaseCollector):
 
     collector_name = CollectorName.PROCESS_LIST
     description = "Read a bounded synthetic process list from the scenario."
+    supported_parameter_names = ("max_processes",)
+    parameter_limits = {"max_processes": (1, MAX_PROCESSES)}
+    scenario_evidence_extensions = (".json",)
 
     def _collect_synthetic(
         self,
@@ -29,12 +32,23 @@ class ProcessListCollector(BaseCollector):
         processes = metrics.get("top_processes") if isinstance(metrics, dict) else None
         if not isinstance(processes, list):
             raise EvidenceUnavailable("Synthetic process information is unavailable.")
-        bounded = [process for process in processes[:MAX_PROCESSES] if isinstance(process, dict)]
+        requested_limit = step.parameters.get("max_processes", MAX_PROCESSES)
+        if (
+            isinstance(requested_limit, bool)
+            or not isinstance(requested_limit, int)
+            or not 1 <= requested_limit <= MAX_PROCESSES
+        ):
+            raise EvidenceUnavailable("Synthetic process limit is unavailable.")
+        bounded = [
+            process
+            for process in processes[:requested_limit]
+            if isinstance(process, dict)
+        ]
         if not bounded:
             raise EvidenceUnavailable("Synthetic process information is unavailable.")
         warnings = (
             ["Synthetic process output was limited to the approved count."]
-            if len(processes) > MAX_PROCESSES
+            if len(processes) > requested_limit
             else []
         )
         return {"processes": bounded}, [], warnings

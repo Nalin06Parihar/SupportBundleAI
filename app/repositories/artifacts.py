@@ -4,7 +4,11 @@ from uuid import UUID
 
 from sqlalchemy import select
 
-from app.database.models import ArtifactRecord, CollectorRunRecord, WorkflowRecord
+from app.database.models import (
+    ArtifactRecord,
+    CollectorRunRecord,
+    WorkflowRecord,
+)
 from app.models._common import (
     utc_now,
     validate_secret_free_text,
@@ -54,6 +58,23 @@ class ArtifactRepository(BaseRepository):
             session.flush()
             session.expunge(record)
             return record
+
+    def register_if_missing(
+        self,
+        artifact: ArtifactMetadata,
+        *,
+        collector_run_id: UUID | None = None,
+    ) -> ArtifactRecord:
+        """Register deterministic artifact metadata once across node retries."""
+        existing = self.get(artifact.artifact_id)
+        if existing is not None:
+            if (
+                existing.workflow_id != str(artifact.workflow_id)
+                or existing.relative_path != artifact.relative_path
+            ):
+                raise ValueError("Artifact identifier is already associated with different metadata.")
+            return existing
+        return self.register(artifact, collector_run_id=collector_run_id)
 
     def get(self, artifact_id: UUID) -> ArtifactRecord | None:
         with self._session() as session:
@@ -121,3 +142,26 @@ class ArtifactRepository(BaseRepository):
             session.flush()
             session.expunge(record)
             return record
+
+    def source_collector_name(self, artifact: ArtifactRecord) -> str | None:
+        """Resolve a sanitized artifact's source collector without exposing paths."""
+        from uuid import uuid5
+
+        from app.database.models import CollectorRunRecord
+
+        workflow_artifacts = self.list_for_workflow(UUID(artifact.workflow_id))
+        source = next(
+            (
+                item
+                for item in workflow_artifacts
+                if str(uuid5(UUID(item.id), "sanitized-v1")) == artifact.id
+            ),
+            artifact,
+        )
+        if source.collector_run_id is None:
+            return None
+        with self._session() as session:
+            run = session.get(CollectorRunRecord, source.collector_run_id)
+            if run is None or run.workflow_id != artifact.workflow_id:
+                return None
+            return run.collector

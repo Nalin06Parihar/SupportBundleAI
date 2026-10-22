@@ -4,15 +4,16 @@ SupportBundleAI helps users turn technical issue reports into controlled diagnos
 
 ## Current status
 
-Phases 1-6 are implemented: FastAPI and Pydantic foundations, SQLite persistence, controlled synthetic scenarios, and deterministic read-only collectors. Collectors use synthetic scenario evidence only; sanitization, policy execution, Groq integration, and real-machine collection are not implemented. Phase 7 will add policy validation and execution limits.
+Phases 1-14 are implemented for a demo-ready workflow over three synthetic scenarios. The application generates a proposed evidence plan, applies local policy, runs approved read-only synthetic collectors, sanitizes evidence locally, obtains human approval before external analysis, and produces a verified bundle that requires final human release approval.
 
 ## Technology stack
 
-Python, FastAPI, Pydantic Settings, SQLite, SQLAlchemy 2.x, Alembic, Groq, psutil, PyYAML, Jinja2, and pytest.
+Python, FastAPI, Streamlit, Pydantic Settings, SQLite, SQLAlchemy 2.x, Alembic, Groq, psutil, PyYAML, Jinja2, and pytest.
 
 ## Project structure
 
 - `app/api/`: API route modules.
+- `frontend/app.py`: Streamlit dashboard using only the FastAPI endpoints.
 - `app/models/`: issue, plan, evidence, and bundle models.
 - `app/services/`: application workflow orchestration.
 - `app/agent/`: AI provider, planning, analysis, and prompts.
@@ -30,36 +31,50 @@ Python, FastAPI, Pydantic Settings, SQLite, SQLAlchemy 2.x, Alembic, Groq, psuti
 - `output/`: generated bundles and reports.
 - `docs/`: project overview, planned architecture, security boundaries, status, and API documentation.
 
-## Setup assumptions
+## Setup
 
-The Python virtual environment and dependencies in `requirements.txt` are expected to be installed. Configuration is loaded from `.env`; set `DATABASE_URL` for SQLite and replace the visible Groq placeholders before future AI integration is used. Diagnostic files remain in controlled filesystem directories; SQLite stores metadata and relative paths only. Application startup does not create tables.
+Install the project dependencies and create the local database schema:
+
+```powershell
+uv sync
+uv run alembic upgrade head
+```
+
+Configure `.env` for the Groq API key/model and local database/output paths. Keep credentials private. The dashboard uses `SUPPORTBUNDLE_API_URL` for the FastAPI base URL and defaults to `http://127.0.0.1:8000`.
 
 ## API
 
 - `GET /`: application metadata and Swagger documentation path.
 - `GET /api/health`: API and local-configuration status only.
+- `GET /api/scenarios` and `/api/workflows` routes for scenario selection, workflow review, approval, and released bundle download.
 - Swagger UI: `/docs`.
 
-Groq connectivity, sanitization, unrestricted real-machine collection, and evidence processing are not implemented. Collected synthetic artifacts are not yet sanitized.
+The Streamlit dashboard communicates with the backend only through the documented HTTP API. Collectors use synthetic scenario data; they do not collect unrestricted real-machine data.
 
-## Run the application and tests
+## Run FastAPI and Streamlit (in separate terminals)
 
-Apply or inspect the database migration:
+Start the FastAPI backend in one terminal:
 
-```text
-alembic upgrade head
+```powershell
+uv run uvicorn app.main:app --reload
 ```
 
-```text
-alembic current
+Start the dashboard in another terminal:
+
+```powershell
+uv run streamlit run frontend/app.py
 ```
 
-```text
-pytest
+Optionally configure a different backend URL before starting Streamlit:
+
+```powershell
+$env:SUPPORTBUNDLE_API_URL = "http://127.0.0.1:8000"
 ```
 
-```text
-uvicorn app.main:app --reload
+Run the test suite:
+
+```powershell
+uv run pytest
 ```
 
 ## Scope limitations
@@ -68,5 +83,5 @@ uvicorn app.main:app --reload
 - Read-only diagnostic collection.
 - No unrestricted shell execution.
 - No automatic remediation.
-- Groq is used only for planning and analysis.
-- Local Python code controls tool execution.
+- Groq is used for planning and analysis only after the relevant human approval.
+- Human approval is required before evidence is sent for external analysis and before a bundle is released.

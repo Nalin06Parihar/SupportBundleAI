@@ -5,6 +5,62 @@
     <title>Diagnostic Escalation Summary</title>
   </head>
   <body>
-    <!-- The Jinja2 escalation-summary template will be implemented later. -->
+    <main>
+      <h1>Diagnostic Escalation Summary</h1>
+      <section>
+        <h2>Issue overview</h2>
+        <p><strong>Application:</strong> {{ issue.application_name }}</p>
+        <p><strong>Title:</strong> {{ issue.title }}</p>
+        <p>{{ issue.description }}</p>
+        <ul>{% for symptom in issue.symptoms %}<li>{{ symptom }}</li>{% endfor %}</ul>
+      </section>
+      <section>
+        <h2>Selected evidence plan</h2>
+        <ul>
+          {% for step in plan.steps %}
+          <li>{{ step.collector }} — {{ step.reason }}{% if step.status %} ({{ step.status }}){% endif %}</li>
+          {% endfor %}
+        </ul>
+      </section>
+      <section>
+        <h2>Collection results</h2>
+        <ul>
+          {% for result in collection_results %}
+          <li>{{ result.collector }}: {{ result.status }}{% if result.error %} — {{ result.error.message }}{% endif %}</li>
+          {% endfor %}
+        </ul>
+      </section>
+      <section>
+        <h2>Sanitization summary</h2>
+        <p>Status: {{ sanitization.status }}; files processed: {{ sanitization.files_processed }}; redactions: {{ sanitization.total_redactions }}.</p>
+        <ul>{% for warning in sanitization.warnings %}<li>{{ warning }}</li>{% endfor %}</ul>
+      </section>
+      <section>
+        <h2>Evidence-backed findings</h2>
+        <ul>
+          {% for finding in analysis.findings %}
+          <li>
+            <strong>{{ finding.title }}</strong> ({{ finding.confidence }}) — {{ finding.description }}
+            <ul>{% for reference in finding.evidence_references %}<li>Artifact {{ reference.artifact_id }}{% if reference.excerpt_id %}, excerpt {{ reference.excerpt_id }}{% endif %}</li>{% endfor %}</ul>
+            {% if finding.unverified_assumptions %}<p>Assumptions: {{ finding.unverified_assumptions | join("; ") }}</p>{% endif %}
+            {% if finding.suggested_next_step %}<p>Suggested next step: {{ finding.suggested_next_step }}</p>{% endif %}
+          </li>
+          {% else %}<li>No findings recorded.</li>
+          {% endfor %}
+        </ul>
+      </section>
+      <section>
+        <h2>Missing evidence</h2>
+        <ul>{% for item in missing_evidence %}<li>{{ item.collector }}: {{ item.reason }} Impact: {{ item.impact }}</li>{% else %}<li>None recorded.</li>{% endfor %}</ul>
+      </section>
+      <section>
+        <h2>Warnings and limitations</h2>
+        <ul>{% for warning in warnings %}<li>{{ warning }}</li>{% else %}<li>None recorded.</li>{% endfor %}</ul>
+      </section>
+      <section>
+        <h2>Included artifacts</h2>
+        <ul>{% for artifact in artifacts %}<li>{{ artifact.relative_path }} ({{ artifact.artifact_type }})</li>{% endfor %}</ul>
+      </section>
+    </main>
   </body>
 </html>

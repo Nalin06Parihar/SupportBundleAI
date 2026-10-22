@@ -30,7 +30,7 @@ class EvidenceFinding(StrictModel):
     finding_id: UUID = Field(default_factory=uuid4)
     title: str = Field(min_length=1, max_length=200)
     description: str = Field(min_length=1, max_length=2000)
-    category: str = Field(min_length=1, max_length=100)
+    category: str = Field(default="other",min_length=1, max_length=100)
     confidence: ConfidenceLevel
     evidence_references: list[EvidenceReference] = Field(min_length=1, max_length=50)
     unverified_assumptions: list[str] = Field(default_factory=list, max_length=20)

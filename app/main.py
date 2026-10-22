@@ -11,6 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.exception_handlers import register_exception_handlers
 from app.api.health import router as health_router
+from app.api.workflows import router as workflows_router
 from app.core.config import get_settings
 from app.core.exceptions import ConfigurationError
 from app.core.logging_config import configure_logging
@@ -74,6 +75,7 @@ app = FastAPI(
 )
 register_exception_handlers(app)
 app.include_router(health_router, prefix="/api", tags=["Health"])
+app.include_router(workflows_router, prefix="/api", tags=["Workflows"])
 
 
 @app.get(

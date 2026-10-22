@@ -98,7 +98,10 @@ def read_log_lines(
 
 def read_bounded_bytes(path: Path) -> bytes:
     """Read a small file only after checking the configured size bound."""
-    maximum_size = int(get_settings().max_log_file_size_mb * 1024 * 1024)
+    maximum_size = max(
+        1,
+        int(get_settings().max_log_file_size_mb * 1024 * 1024),
+    )
     try:
         size = path.stat().st_size
         if size > maximum_size:

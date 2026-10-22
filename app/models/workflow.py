@@ -41,6 +41,7 @@ class WorkflowStatus(StrEnum):
     AWAITING_RELEASE_APPROVAL = "awaiting_release_approval"
     VERIFYING = "verifying"
     COMPLETED = "completed"
+    COLLECTION_COMPLETED = "collection_completed"
     PARTIAL = "partial"
     REJECTED = "rejected"
     CANCELLED = "cancelled"
@@ -56,6 +57,7 @@ class WorkflowEventType(StrEnum):
     APPROVAL_RECEIVED = "approval_received"
     COLLECTOR_STARTED = "collector_started"
     COLLECTOR_COMPLETED = "collector_completed"
+    COLLECTION_COMPLETED = "collection_completed"
     SANITIZATION_COMPLETED = "sanitization_completed"
     RESIDUAL_RISK_DETECTED = "residual_risk_detected"
     EVIDENCE_RELEASED = "evidence_released"
@@ -64,6 +66,7 @@ class WorkflowEventType(StrEnum):
     REPORT_GENERATED = "report_generated"
     BUNDLE_CREATED = "bundle_created"
     BUNDLE_VERIFIED = "bundle_verified"
+    BUNDLE_RELEASED = "bundle_released"
     WORKFLOW_COMPLETED = "workflow_completed"
     WORKFLOW_FAILED = "workflow_failed"
 
@@ -114,8 +117,11 @@ class WorkflowState(StrictModel):
     evidence_release_decision: EvidenceReleaseDecision | None = None
     analysis_result: AnalysisResult | None = None
     supplemental_plan: EvidencePlan | None = None
+    supplemental_cycle_count: int = Field(default=0, ge=0, le=1)
     bundle_metadata: BundleMetadata | None = None
     bundle_release_decision: BundleReleaseDecision | None = None
+    bundle_review_payload: dict[str, object] | None = None
+    bundle_revision_count: int = Field(default=0, ge=0, le=1)
     missing_evidence: list[MissingEvidence] = Field(default_factory=list, max_length=100)
     events: list[WorkflowEvent] = Field(default_factory=list, max_length=1000)
     warnings: list[str] = Field(default_factory=list, max_length=100)

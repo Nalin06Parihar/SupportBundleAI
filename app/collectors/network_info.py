@@ -14,6 +14,7 @@ class NetworkInfoCollector(BaseCollector):
 
     collector_name = CollectorName.NETWORK_INFO
     description = "Read synthetic network interface or dependency status."
+    scenario_evidence_extensions = (".json",)
 
     def _collect_synthetic(
         self,

@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
-from uuid import UUID, uuid4
+from uuid import UUID, uuid4, uuid5
 
 from sqlalchemy import select
 from app.database.models import (
+    ArtifactRecord,
     CollectorRunRecord,
     EvidenceStepRecord,
     WorkflowEventRecord,
@@ -20,6 +21,7 @@ from app.models._common import (
     validate_warnings,
 )
 from app.models.evidence import CollectorResult
+from app.models.evidence import ArtifactMetadata
 from app.models.issue import IssueRequest
 from app.models.plan import EvidencePlan
 from app.models.workflow import WorkflowEvent, WorkflowEventType, WorkflowStatus
@@ -139,6 +141,10 @@ class WorkflowRepository(BaseRepository):
         now = utc_now()
         with self._session() as session:
             workflow = self._require_workflow(session, workflow_id)
+            event_id = uuid5(workflow_id, "workflow-completed")
+            if session.get(WorkflowEventRecord, str(event_id)) is not None:
+                session.expunge(workflow)
+                return workflow
             workflow.status = WorkflowStatus.COMPLETED.value
             workflow.current_stage = WorkflowStatus.COMPLETED.value
             workflow.error_code = None
@@ -147,10 +153,58 @@ class WorkflowRepository(BaseRepository):
             workflow.updated_at = now
             session.add(
                 WorkflowEventRecord(
-                    id=str(uuid4()),
+                    id=str(event_id),
                     workflow_id=workflow.id,
                     event_type=WorkflowEventType.WORKFLOW_COMPLETED.value,
                     message="Workflow completed.",
+                    created_at=now,
+                )
+            )
+            session.flush()
+            session.expunge(workflow)
+            return workflow
+
+    def finish_collection(
+        self,
+        workflow_id: UUID,
+        *,
+        partial: bool,
+        cycle: int = 0,
+    ) -> WorkflowRecord:
+        """Persist collection-stage completion without claiming workflow completion."""
+        status = WorkflowStatus.PARTIAL if partial else WorkflowStatus.COLLECTION_COMPLETED
+        event_id = uuid5(workflow_id, f"collection-stage-completed:{cycle}")
+        now = utc_now()
+        with self._session() as session:
+            workflow = self._require_workflow(session, workflow_id)
+            if session.get(WorkflowEventRecord, str(event_id)) is not None:
+                session.expunge(workflow)
+                return workflow
+            previous_status = workflow.status
+            workflow.status = status.value
+            workflow.current_stage = "collection_complete"
+            workflow.updated_at = now
+            if previous_status != status.value:
+                session.add(
+                    WorkflowEventRecord(
+                        id=str(
+                            uuid5(
+                                workflow_id,
+                                f"status:{status.value}:collection-cycle:{cycle}",
+                            )
+                        ),
+                        workflow_id=workflow.id,
+                        event_type=WorkflowEventType.STATUS_CHANGED.value,
+                        message=f"Workflow status changed to {status.value}.",
+                        created_at=now,
+                    )
+                )
+            session.add(
+                WorkflowEventRecord(
+                    id=str(event_id),
+                    workflow_id=workflow.id,
+                    event_type=WorkflowEventType.COLLECTION_COMPLETED.value,
+                    message="Approved collection stage completed.",
                     created_at=now,
                 )
             )
@@ -183,6 +237,9 @@ class WorkflowRepository(BaseRepository):
         now = utc_now()
         with self._session() as session:
             workflow = self._require_workflow(session, workflow_id)
+            if workflow.status == WorkflowStatus.FAILED.value:
+                session.expunge(workflow)
+                return workflow
             workflow.status = WorkflowStatus.FAILED.value
             workflow.current_stage = WorkflowStatus.FAILED.value
             workflow.error_code = error_code
@@ -191,7 +248,7 @@ class WorkflowRepository(BaseRepository):
             workflow.updated_at = now
             session.add(
                 WorkflowEventRecord(
-                    id=str(uuid4()),
+                    id=str(uuid5(workflow_id, "workflow-failed")),
                     workflow_id=workflow.id,
                     event_type=WorkflowEventType.WORKFLOW_FAILED.value,
                     message="Workflow failed.",
@@ -202,22 +259,36 @@ class WorkflowRepository(BaseRepository):
             session.expunge(workflow)
             return workflow
 
-    def save_plan(self, workflow_id: UUID, plan: EvidencePlan) -> WorkflowRecord:
+    def save_plan(
+        self,
+        workflow_id: UUID,
+        plan: EvidencePlan,
+        *,
+        preserve_existing_steps: bool = False,
+    ) -> WorkflowRecord:
         self._validate_plan_metadata(plan)
         now = utc_now()
         with self._session() as session:
             workflow = self._require_workflow(session, workflow_id)
-            self._apply_plan(session, workflow, plan, now)
-            workflow.updated_at = now
-            session.add(
-                WorkflowEventRecord(
-                    id=str(uuid4()),
-                    workflow_id=workflow.id,
-                    event_type=WorkflowEventType.PLAN_GENERATED.value,
-                    message="Evidence plan metadata saved.",
-                    created_at=now,
-                )
+            self._apply_plan(
+                session,
+                workflow,
+                plan,
+                now,
+                preserve_existing_steps=preserve_existing_steps,
             )
+            workflow.updated_at = now
+            event_id = uuid5(workflow_id, f"plan-generated:{plan.plan_id}")
+            if session.get(WorkflowEventRecord, str(event_id)) is None:
+                session.add(
+                    WorkflowEventRecord(
+                        id=str(event_id),
+                        workflow_id=workflow.id,
+                        event_type=WorkflowEventType.PLAN_GENERATED.value,
+                        message="Evidence plan metadata saved.",
+                        created_at=now,
+                    )
+                )
             session.flush()
             session.expunge(workflow)
             return workflow
@@ -226,6 +297,10 @@ class WorkflowRepository(BaseRepository):
         validate_secret_free_text(event.message)
         with self._session() as session:
             self._require_workflow(session, workflow_id)
+            existing = session.get(WorkflowEventRecord, str(event.event_id))
+            if existing is not None:
+                session.expunge(existing)
+                return existing
             record = WorkflowEventRecord(
                 id=str(event.event_id),
                 workflow_id=str(workflow_id),
@@ -237,6 +312,138 @@ class WorkflowRepository(BaseRepository):
             session.flush()
             session.expunge(record)
             return record
+
+    def reserve_collector_run(
+        self,
+        workflow_id: UUID,
+        step_id: UUID,
+        collector: str,
+    ) -> tuple[CollectorRunRecord, bool]:
+        """Create a durable execution fence before invoking one collector."""
+        run_id = uuid5(workflow_id, f"collector:{step_id}")
+        now = utc_now()
+        with self._session() as session:
+            self._require_workflow(session, workflow_id)
+            step = session.get(EvidenceStepRecord, str(step_id))
+            if step is None or step.workflow_id != str(workflow_id):
+                raise ValueError("Collector run references an unknown workflow step.")
+            if step.collector != collector:
+                raise ValueError("Collector run does not match its workflow step.")
+            existing = session.get(CollectorRunRecord, str(run_id))
+            if existing is not None:
+                session.expunge(existing)
+                return existing, False
+            record = CollectorRunRecord(
+                id=str(run_id),
+                workflow_id=str(workflow_id),
+                step_id=str(step_id),
+                collector=collector,
+                status="running",
+                collected_at=now,
+                warnings=[],
+                error=None,
+                duration_ms=0,
+            )
+            session.add(record)
+            step.status = "running"
+            step.updated_at = now
+            session.add(
+                WorkflowEventRecord(
+                    id=str(uuid5(workflow_id, f"collector-started:{step_id}")),
+                    workflow_id=str(workflow_id),
+                    event_type=WorkflowEventType.COLLECTOR_STARTED.value,
+                    message=f"Collector {collector} started.",
+                    created_at=now,
+                )
+            )
+            session.flush()
+            session.expunge(record)
+            return record, True
+
+    def complete_collector_run(
+        self,
+        result: CollectorResult,
+    ) -> CollectorRunRecord:
+        """Finalize a reserved collector run and register only artifact metadata."""
+        now = utc_now()
+        validate_warnings(result.warnings)
+        for warning in result.warnings:
+            validate_secret_free_text(warning)
+        if result.error is not None:
+            validate_secret_free_text(result.error.message)
+        expected_id = uuid5(result.workflow_id, f"collector:{result.step_id}")
+        if result.result_id != expected_id:
+            raise ValueError("Collector result does not match its reserved run.")
+        with self._session() as session:
+            self._require_workflow(session, result.workflow_id)
+            record = session.get(CollectorRunRecord, str(expected_id))
+            if record is None:
+                raise LookupError("Collector run reservation was not found.")
+            if record.status != "running":
+                if record.status == result.status.value:
+                    session.expunge(record)
+                    return record
+                raise ValueError("Collector run has already been finalized.")
+            step = session.get(EvidenceStepRecord, str(result.step_id))
+            if step is None or step.workflow_id != str(result.workflow_id):
+                raise ValueError("Collector result references an unknown workflow step.")
+            if step.collector != result.collector.value:
+                raise ValueError("Collector result does not match its approved step.")
+            record.status = result.status.value
+            record.collected_at = result.collected_at
+            record.warnings = list(result.warnings)
+            record.error = result.error.model_dump(mode="json") if result.error else None
+            record.duration_ms = result.duration_ms
+            step.status = result.status.value
+            step.updated_at = now
+            for artifact in result.artifacts:
+                self._register_artifact(session, artifact, record, now)
+            session.add(
+                WorkflowEventRecord(
+                    id=str(uuid5(result.workflow_id, f"collector-completed:{result.step_id}")),
+                    workflow_id=str(result.workflow_id),
+                    event_type=WorkflowEventType.COLLECTOR_COMPLETED.value,
+                    message=f"Collector run finished with status {result.status.value}.",
+                    created_at=now,
+                )
+            )
+            session.flush()
+            session.expunge(record)
+            return record
+
+    @staticmethod
+    def _register_artifact(
+        session,
+        artifact: ArtifactMetadata,
+        run: CollectorRunRecord,
+        now: datetime,
+    ) -> None:
+        if artifact.workflow_id != UUID(run.workflow_id):
+            raise ValueError("Artifact does not belong to the collector workflow.")
+        existing = session.get(ArtifactRecord, str(artifact.artifact_id))
+        if existing is not None:
+            if existing.workflow_id != run.workflow_id:
+                raise ValueError("Artifact identifier is already in use.")
+            return
+        validate_secret_free_text(artifact.name)
+        validate_secret_free_text(artifact.media_type)
+        session.add(
+            ArtifactRecord(
+                id=str(artifact.artifact_id),
+                workflow_id=run.workflow_id,
+                collector_run_id=run.id,
+                name=artifact.name,
+                artifact_type=artifact.artifact_type.value,
+                relative_path=artifact.relative_path,
+                media_type=artifact.media_type,
+                size_bytes=artifact.size_bytes,
+                sanitized=artifact.sanitized,
+                sensitivity_status=artifact.sensitivity_status.value,
+                sha256=artifact.sha256,
+                created_at=artifact.created_at,
+                updated_at=now,
+            )
+        )
 
     def list_events(self, workflow_id: UUID) -> list[WorkflowEventRecord]:
         with self._session() as session:
@@ -326,6 +533,8 @@ class WorkflowRepository(BaseRepository):
         workflow: WorkflowRecord,
         plan: EvidencePlan,
         now: datetime,
+        *,
+        preserve_existing_steps: bool = False,
     ) -> None:
         statement = select(EvidenceStepRecord).where(
             EvidenceStepRecord.workflow_id == workflow.id
@@ -333,15 +542,20 @@ class WorkflowRepository(BaseRepository):
         existing_steps = {
             record.id: record for record in session.scalars(statement)
         }
+        position = max(
+            (record.position for record in existing_steps.values()),
+            default=-1,
+        ) + 1
+        active_step_ids = {str(step.step_id) for step in plan.steps}
+        for existing_id, record in list(existing_steps.items()):
+            if not preserve_existing_steps and existing_id not in active_step_ids:
+                session.delete(record)
+                del existing_steps[existing_id]
         workflow.plan_id = str(plan.plan_id)
         workflow.plan_status = plan.status.value
         workflow.plan_summary = plan.issue_summary
         workflow.suspected_category = plan.suspected_category
         workflow.plan_warnings = list(plan.warnings)
-        position = max(
-            (record.position for record in existing_steps.values()),
-            default=-1,
-        ) + 1
         for step in plan.steps:
             record = existing_steps.get(str(step.step_id))
             if record is None:

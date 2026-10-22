@@ -16,6 +16,7 @@ class SystemInfoCollector(BaseCollector):
 
     collector_name = CollectorName.SYSTEM_INFO
     description = "Read synthetic operating-system and host metadata from the scenario."
+    scenario_evidence_extensions = (".json",)
 
     def _collect_synthetic(
         self,
@@ -50,6 +51,7 @@ class ResourceUsageCollector(BaseCollector):
 
     collector_name = CollectorName.RESOURCE_USAGE
     description = "Read synthetic CPU and memory metrics from the scenario."
+    scenario_evidence_extensions = (".json",)
 
     def _collect_synthetic(
         self,

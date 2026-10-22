@@ -50,6 +50,28 @@ class BundleRepository(BaseRepository):
             session.expunge(record)
             return record
 
+    def register_if_missing(self, bundle: BundleMetadata) -> BundleRecord:
+        existing = self.get(bundle.bundle_id)
+        if existing is not None:
+            if (
+                existing.workflow_id != str(bundle.workflow_id)
+                or existing.relative_path != bundle.relative_path
+                or existing.filename != bundle.filename
+                or existing.manifest_relative_path != bundle.manifest_relative_path
+            ):
+                raise ValueError("Bundle ID is already associated with different metadata.")
+            if (
+                existing.verification_status == BundleVerificationStatus.VERIFIED.value
+                and bundle.verification_status == BundleVerificationStatus.FAILED
+            ):
+                self.update_verification(
+                    bundle.bundle_id,
+                    BundleVerificationStatus.FAILED,
+                )
+                return self.get(bundle.bundle_id) or existing
+            return existing
+        return self.register(bundle)
+
     def get(self, bundle_id: UUID) -> BundleRecord | None:
         with self._session() as session:
             record = session.get(BundleRecord, str(bundle_id))
@@ -74,19 +96,25 @@ class BundleRepository(BaseRepository):
         self,
         bundle_id: UUID,
         status: BundleVerificationStatus,
+        *,
+        sanitized_only: bool | None = None,
     ) -> BundleRecord:
         now = utc_now()
         with self._session() as session:
             record = session.get(BundleRecord, str(bundle_id))
             if record is None:
                 raise LookupError("Bundle was not found.")
-            if status == BundleVerificationStatus.VERIFIED and not record.sanitized_only:
+            if status == BundleVerificationStatus.VERIFIED and not (
+                record.sanitized_only or sanitized_only is True
+            ):
                 raise ValueError("Only sanitized-only bundles may be verified.")
             if record.release_status == ApprovalStatus.APPROVED.value and (
                 status != BundleVerificationStatus.VERIFIED
             ):
                 raise ValueError("A released bundle cannot lose verification.")
             record.verification_status = status.value
+            if sanitized_only is not None:
+                record.sanitized_only = sanitized_only
             record.verified_at = (
                 now if status == BundleVerificationStatus.VERIFIED else None
             )
@@ -105,6 +133,12 @@ class BundleRepository(BaseRepository):
             if bundle is None or bundle.workflow_id != str(decision.workflow_id):
                 raise LookupError("Bundle was not found for this workflow.")
             if bundle.release_status is not None:
+                if (
+                    bundle.release_decision == decision.model_dump(mode="json")
+                    and bundle.release_status == decision.status.value
+                ):
+                    session.expunge(bundle)
+                    return bundle
                 raise ValueError("Bundle release has already been recorded.")
             if decision.status == ApprovalStatus.APPROVED and (
                 bundle.verification_status != BundleVerificationStatus.VERIFIED.value

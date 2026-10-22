@@ -83,6 +83,65 @@ class ApprovalRepository(BaseRepository):
                 session.expunge(record)
             return records
 
+    def get(self, approval_id: UUID) -> ApprovalRecord | None:
+        with self._session() as session:
+            record = session.get(ApprovalRecord, str(approval_id))
+            if record is not None:
+                session.expunge(record)
+            return record
+
+    def get_or_create_pending(
+        self,
+        request: ApprovalRequest,
+        *,
+        bundle_id: UUID | None = None,
+    ) -> ApprovalRecord:
+        """Reuse an existing pending request before creating a new approval."""
+        if request.status != ApprovalStatus.PENDING:
+            raise ValueError("Approval requests must start pending.")
+        if request.approval_type == ApprovalType.BUNDLE_RELEASE and bundle_id is None:
+            raise ValueError("Bundle-release approvals require a bundle.")
+        if request.approval_type != ApprovalType.BUNDLE_RELEASE and bundle_id is not None:
+            raise ValueError("Only bundle-release approvals may reference a bundle.")
+        validate_secret_free_text(request.title)
+        validate_secret_free_text(request.explanation)
+        with self._session() as session:
+            existing = session.scalar(
+                select(ApprovalRecord)
+                .where(
+                    ApprovalRecord.workflow_id == str(request.workflow_id),
+                    ApprovalRecord.approval_type == request.approval_type.value,
+                    ApprovalRecord.status == ApprovalStatus.PENDING.value,
+                )
+                .order_by(ApprovalRecord.requested_at)
+                .limit(1)
+            )
+            if existing is not None:
+                if existing.bundle_id != (str(bundle_id) if bundle_id else None):
+                    raise ValueError("A different approval is already pending.")
+                session.expunge(existing)
+                return existing
+            now = utc_now()
+            record = ApprovalRecord(
+                id=str(request.approval_id),
+                workflow_id=str(request.workflow_id),
+                bundle_id=str(bundle_id) if bundle_id else None,
+                approval_type=request.approval_type.value,
+                status=ApprovalStatus.PENDING.value,
+                title=request.title,
+                explanation=request.explanation,
+                decision=None,
+                requested_at=request.requested_at,
+                expires_at=request.expires_at,
+                decided_at=None,
+                created_at=now,
+                updated_at=now,
+            )
+            session.add(record)
+            session.flush()
+            session.expunge(record)
+            return record
+
     def finalize(self, decision: ApprovalDecision) -> ApprovalRecord:
         if decision.status == ApprovalStatus.PENDING:
             raise ValueError("A finalized decision cannot remain pending.")

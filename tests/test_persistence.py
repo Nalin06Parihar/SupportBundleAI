@@ -389,8 +389,9 @@ def test_bundle_verification_and_release_rules(session_factory) -> None:
     released = repository.record_release(decision)
     assert released.release_status == ApprovalStatus.APPROVED.value
     assert repository.get(bundle.bundle_id).released_at is not None
-    with pytest.raises(ValueError):
-        repository.record_release(decision)
+    assert repository.record_release(decision).release_status == (
+        ApprovalStatus.APPROVED.value
+    )
 
 
 def test_relationships_and_metadata_cascade_do_not_delete_files(
